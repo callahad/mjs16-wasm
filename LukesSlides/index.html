@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>WebAssembly - Philly ETE 2016</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css" id="theme">
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+        <!-- style inline <code> -->
+        <style>
+            .reveal :not(pre) > code {
+                color: #e3ceab;
+                font-size: 75%;
+            }
+            .reveal .yay {
+                color: #1b91ff;
+                font-size: 125%;
+            }
+            .reveal .blue {
+                color: #1b91ff;
+            }
+            .reveal .snowmen-list {
+                list-style: none;
+                margin-left: 0;
+                padding-left: 1em;
+                text-indent: -1em;
+            }
+            .reveal .snowmen-list li:before {
+                content: "☃";
+                padding-right: .5em;
+            }
+        </style>
+	</head>
+	<body>
+		<div class="reveal"><div class="slides">
+
+
+            <section>
+                <h1>WebAssembly</h1>
+                <h3>A New Compiler Target for the Web</h3>
+                <p><small>
+                    people.mozilla.org/~lwagner/philly-ete-2016<br><br>
+                    <a href="http://lukewagner.name">Luke Wagner</a> / <a href="https://twitter.com/luke_wagner">@luke_wagner</a>
+                </small></p>
+            </section>
+
+
+            <section>
+                <h2>About me</h2>
+                <p>Engineer at Mozilla { JS engine, Research } 6 years</p>
+                <p>SpiderMonkey (Firefox JavaScript engine) hacker:<p>
+                <table>
+                    <tr>
+                        <td><img src="trace.jpg" /><br><center><small>2008 - 2011</small></center></td>
+                        <td><img src="jaeger.jpg" /><br><center><small>2010 - 2013</small></center></td>
+                        <td><img src="ion.jpg" /><br><center><small>2012 -</small></center></td>
+                        <td><img src="odin.jpg" /><br><center><small>2013 - </small></center></td>
+                    </tr>
+                </table>
+                <p>Co-chair WebAssembly W3C Community Group</p>
+            </section>
+
+
+            <section>
+                <h2>Outline</h2>
+                <ul>
+                    <li>What is WebAssembly?</li>
+                    <li>Why do we need WebAssembly?</li>
+                    <li>Little tour of WebAssembly</li>
+                    <li>APIs</li>
+                    <li>Beyond compiling C/C++</li>
+                    <li>How will WebAssembly be used?</li>
+                    <li>Will WebAssembly replace JS? <small class="fragment">(Spoiler alert: no)</small></li>
+                </ul>
+            </section>
+
+
+            <section>
+                <h2>What is WebAssembly?</h2>
+                <p>
+                    A <em>new standard</em> being developed in a W3C Community
+                    Group with Apple, Google, Microsoft and Mozilla which
+                    defines:
+                </p>
+                <ol>
+                    <li>
+                        a <span class="fragment highlight-current-blue">compact</span>, 
+                        <span class="fragment highlight-current-blue">portable</span> <em>binary format</em> which is
+                        <span class="fragment highlight-current-blue">fast to load</span> and runs
+                        <span class="fragment highlight-current-blue">safely</span> at 
+                        <span class="fragment highlight-current-blue">predictably near-native speed</span>
+                    </li>
+                    <li>
+                        a <span class="fragment highlight-current-blue">1:1</span> <em>text format</em>
+                        rendered by developer tools when 
+                        <span class="fragment highlight-current-blue">viewing source</span>
+                    </li>
+                </ol>
+            </section>
+
+            <section>
+                <p>So what is WebAssembly <em>really</em>?</p>
+                <a href="https://video.yahoo.com/shimmer-floor-wax-000000185.html"><img src="dessert-or-wax.jpg" /></a>
+                <p>It's a couple things, depending on what you're doing:</p>
+            </section>
+
+            <section>
+                <h2>1. Compiler Target for the Web</h2>
+                <p>Not a programming language</p>
+                <p>Compile <em>from</em> programming languages</p>
+            </section>
+
+
+            <section>
+                <h2>2. JavaScript Feature</h2>
+                <p>Ability to efficiently load large code +</p>
+                <p>predictable near-native performance =</p>
+                <p>Powerful library-building tool</p>
+            </section>
+
+
+            <section>
+                <h2>3. Virtual CPU</h2>
+                <p>As close to physical machine instructions as safety/portability allow</p>
+                <table>
+                    <tr>
+                        <th>WebAssembly</th>
+                        <th></th>
+                        <th>x86</th>
+                        <th>ARM</th>
+                    </tr>
+                    <tr>
+                        <td><code>i32.add</code></td>
+                        <td>↦</td>
+                        <td><code>addl</code></td>
+                        <td><code>ADD</code></td>
+                    </tr>
+                        <td><code>call</code></td>
+                        <td>↦</td>
+                        <td><code>call</code></td>
+                        <td><code>BL</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>i32.load</code></td>
+                        <td>↦</td>
+                        <td>check + <code>mov</code></td>
+                        <td>check + <code>LDR</code></td>
+                    </tr>
+                </table>
+                <p>"check" can safely eliminated on 64-bit, hoistable otherwise</p>
+            </section>
+
+
+            <section>
+                <h2>4. Evolution of asm.js</h2>
+                <small>
+                    (tl;dr - <em>asm.js</em> is an extraordinarily optimizable,
+                     low-level <em>subset of JavaScript</em> that can be compiled from
+                     languages like C/C++ and shipped on the Web <em>today</em>)
+                </small>
+                <p>Can think of WebAssembly as a binary encoding of asm.js with tweaks to make it a better compiler target</p>
+                <table>
+                    <tr>
+                        <th>asm.js</th>
+                        <th></th>
+                        <th>WebAssembly</th>
+                    </tr>
+                    <tr>
+                        <td><code>(x+y)|0</code></td>
+                        <td>↦</td>
+                        <td><code>i32.add</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>f()|0</code></td>
+                        <td>↦</td>
+                        <td><code>call</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>HEAP32[i&gt;&gt;2]|0</code></td>
+                        <td>↝</td>
+                        <td><code>i32.load</code></td>
+                    </tr>
+                </table>
+            </section>
+
+
+            <section>
+                <h2>Why WebAssembly?</h2>
+                <p>Why do we <em>need</em> this new target / feature / CPU / asm.js++?</p>
+            </section>
+
+
+            <section>
+                <h2>Short History of asm.js</h2>
+                <table>
+                    <tr>
+                        <td>2009 - 2012</td>
+                        <td>
+                            Mozilla Research experiments:<br>
+                            <em>Emscripten</em>: C/C++ to JS compiler/toolchain<br>
+                            <em>asm.js</em>: optimize Emscripten-style output
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2013 - 2014</td>
+                        <td>
+                            Published <em>asm.js</em> subset, shipped optimizations
+                            in Firefox, demonstrated on large game engines
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2015 - 2016</td>
+                        <td>
+                            <p>
+                                asm.js optimizations shipping or under development in
+                                <a href="https://developer.microsoft.com/en-us/microsoft-edge/platform/status/asmjs">Edge</a>,
+                                <a href="https://www.chromestatus.com/features#asm.js">Chrome</a> and 
+                                <a href="https://webkit.org/status/#feature-asm.js">Safari</a>
+                            </p>
+                            <p>Adobe, AutoDesk, Epic, Facebook, Mega, Unity, and more shipping with Emscripten/asm.js</p>
+                        </td>
+                    </td>
+                </table>
+            </section>
+
+
+            <section>
+                <h2>Why WebAssembly?</h2>
+                <p>asm.js use today demonstrates real demand and excitement</p>
+                <p>asm.js use cases:</p>
+                <ul>
+                    <li>avoid plugins (deprecation, friction, security)</li>
+                    <li>bring existing applications to the Web (too big to rewrite)</li>
+                    <li>port high-performance C/C++ libraries for use by JS</li>
+                    <li>predictable near-native performance (compared to JS)</li>
+                </ul>
+            </section>
+
+
+            <section>
+                <h2>But Why WebAssembly?</h2>
+                <p>Because we need to go farther than we can with asm.js.</p>
+                <p>Based on feedback from developers, we need to:</p>
+                <ul>
+                    <li>further reduce load time (especially on mobile)</li>
+                    <li>reduce over-the-wire size (with and without compression)</li>
+                    <li>reduce runtime memory consumption for code</li>
+                    <li>new features that don't fit neatly into asm.js</li>
+                    <li>keep pushing closer to native code performance</li>
+                </ul>
+                <p>
+                    (Also <em>shared memory</em>, but 
+                    <a href="http://tc39.github.io/ecmascript_sharedmem/shmem.html">that's coming in JS</a> too.)
+                </p>
+            </section>
+
+
+            <section>
+                <h2>Why WebAssembly?</h2>
+                <p>tl;dr</p>
+                <a href="https://www.youtube.com/watch?v=hFDcoX7s6rE"><img src="want-it-all.gif" /></a>
+                <p>And I want it on the Web!</p>
+            </section>
+
+
+            <section>
+                <p><img src="construction.gif" /></p>
+                <p>WebAssembly is a Work In Progress</p>
+                <p>Recently reached Firefox/Chrome/Edge interop <a href="http://webassembly.github.io/demo">milestone</a>!</p>
+                <p>More iteration before stable spec and ship in browsers</p>
+                <p>Want to ship this year <small>(with usual standardization caveats)</small></p>
+            </section>
+            <section>
+                <p><img src="construction.gif" /></p>
+                <p>WebAssembly is being specified and shipped <em>iteratively</em>.</p>
+                <p>The initial release focuses on a Minimum Viable Product: compiling C/C++, better asm.js.</p>
+                <p>(This means we can use asm.js to write <a href="https://github.com/WebAssembly/design/blob/master/FAQ.md#can-the-polyfill-really-be-efficient">polyfills</a>!)</p>
+                <p>But there is a <em>lot</em> more we want to do next!</p>
+            </section>
+            <section>
+                <p><img src="construction.gif" /></p>
+                <p>
+                    The whole text format is under construction, so I'll use the
+                    current <em>temporary</em> S-Expression syntax in this presentation:
+                </p>
+                <p><img src="ast-to-sexpr.png" /></p>
+            </section>
+            <section>
+                <p><img src="construction.gif" /></p>
+                <p>Other things that are speculative or NYI are marked ☃</p>
+            </section>
+
+
+            <section>
+                <h3>Let's take a little tour!</h3>
+            </section>
+
+
+            <section>
+                <p>Start with some C code:</p>
+                <pre><code class="c" data-trim>
+// demo.c
+DLL_EXPORT
+int add(int lhs, int rhs) {
+    return lhs + rhs;
+}
+                </code></pre>
+                where functions we want to call from JS are <em>exported</em>:
+                <pre><code class="c" data-trim>
+// However DLL/DSO exports are defined in your compiler
+#define DLL_EXPORT __attribute__ ((visibility ("default")))
+                </code></pre>
+                <p>then compile to <code>wasm</code>:</p>
+                <pre><code class="bash" data-trim>
+☃ clang -mwasm demo.c -o demo.wasm
+                </code></pre>
+            </section>
+
+
+            <section>
+                <p>Render the binary as text:</p>
+                <pre><code class="bash" data-trim>
+☃ wasm2text demo.wasm | less
+                </code></pre>
+                <pre><code class="lisp" data-trim>
+(module
+    (func $add (param $lhs i32) (param $rhs i32) (result i32)
+        (i32.add (get_local $lhs) (get_local $rhs))
+    )
+    (export "add" $add)
+)
+                </code></pre>
+            </section>
+
+
+            <section>
+                <p>Today, we load the <code>wasm</code> via JS API:</p>
+                <pre><code class="js" data-trim>
+fetch('demo.wasm').then(response =>
+    response.arrayBuffer()
+).then(buffer => {
+    let codeBytes = new Uint8Array(buffer);
+    let instance = Wasm.instantiateModule(codeBytes);
+    alert("1 + 2 = " + instance.exports.add(1, 2));
+});
+                </code></pre>
+            </section>
+
+
+            <section>
+                <h2>Demo!</h2>
+                <p>Experimental support requires Firefox Nightly and setting <code>javascript.options.wasm</code> in <code>about:config</code></p>
+                <ol>
+                    <li>Open the Debugger</li>
+                    <li><button onclick='demoClick()'>Click this Button</button></li>
+                    <li>Click the <code>wasm</code> source</li>
+                </ol>
+                <script>
+                    function demoClick() {
+                        fetch('demo.wasm').then(response =>
+                            response.arrayBuffer()
+                        ).then(buffer => {
+                            let codeBytes = new Uint8Array(buffer);
+                            try {
+                                let instance = Wasm.instantiateModule(codeBytes);
+                                alert("1 + 2 = " + instance.exports.add(1, 2));
+                            } catch (e) {
+                                alert("Error: " + e);
+                            }
+                        });
+                    }
+                </script>
+            </section>
+
+
+            <section>
+                <p>☃ In the future, streaming, async compilation via <a href="http://streams.spec.whatwg.org/">Streams</a></p>
+                <pre><code class="js" data-trim>
+fetch('demo.wasm').then(response =>
+    Wasm.compile(response.body.getReader())
+).then(instance => {
+    alert("1 + 2 = " + instance.exports.add(1, 2));
+});
+                </code></pre>
+            </section>
+
+
+            <section>
+                <p>☃ In the future, with ES6 Module integration:</p>
+                <pre><code class="html" data-trim>
+<script type='module'>
+    import add from 'demo.wasm';
+    alert("1 + 2 = " + add(1, 2));
+</script>
+                </code></pre>
+            </section>
+
+            <section>
+                <p>WebAssembly can call JavaScript too!</p>
+                <pre><code class="c" data-trim>
+// main.c
+extern DLL_IMPORT void printInt(int);
+int main() {
+    printInt(42);
+}
+                </code></pre>
+                where JS functions we want to call from <code>wasm</code> are <em>imported</em>:
+                <pre><code class="c" data-trim>
+// However DLL/DSO imports are defined in your compiler
+#define DLL_IMPORT __attribute__ ((visibility ("default")))
+                </code></pre>
+                <p>then compile to <code>wasm</code>:</p>
+                <pre><code class="bash" data-trim>
+☃ clang -mwasm main.c -o main.wasm
+                </code></pre>
+            </section>
+
+
+            <section>
+                <p>Rendering the binary as text:</p>
+                <pre><code class="bash" data-trim>
+☃ wasm2text main.wasm | less
+                </code></pre>
+                <pre><code class="lisp" data-trim>
+(module
+    (import "imports" "printInt" (param i32))
+    (func $main (call_import 0 (i32.const 42)))
+    (start $main)
+)
+                </code></pre>
+            </section>
+
+
+            <section>
+                <p>Now write the ES6 module which is called by <code>wasm</code>:</p>
+                <pre><code class="js" data-trim>
+// imports.js
+export var printInt = i => console.log(i);
+                </code></pre>
+                <p>☃ and load the <code>wasm</code> from a <code>&lt;script type='module'&gt;</code> tag:</p>
+                <pre><code class="html" data-trim>
+<script type='module' src='main.wasm'></script>
+                </code></pre>
+                <p>Imports can also just be functions passed to the JS API:</p>
+                <pre><code class="js" data-trim>
+var codeBytes = ...;
+var imports = {printInt:i => console.log(i)};
+Wasm.instantiateModule(codeBytes, {imports});
+                </code></pre>
+            </section>
+
+
+            <section>
+                <p>Now let's look at an actual computation:</p>
+                <pre><code class="html" data-trim data-noescape>
+// accum.c
+DLL_EXPORT
+int accum(<span class="fragment highlight-current-blue" data-fragment-index="2">int* i, int* end</span>) {
+    <span class="fragment highlight-current-blue" data-fragment-index="1">int sum = 0;</span>
+    <span class="fragment highlight-current-blue" data-fragment-index="3">for (;</span> <span class="fragment highlight-current-blue" data-fragment-index="4">i != end</span>; <span class="fragment highlight-current-blue" data-fragment-index="5">i++</span><span class="fragment highlight-current-blue" data-fragment-index="3">)</span>
+        <span class="fragment highlight-current-blue" data-fragment-index="1">sum +=</span> <span class="fragment highlight-current-blue" data-fragment-index="2">*i</span>;
+    <span class="fragment highlight-current-blue" data-fragment-index="1">return sum;</span>
+}
+                </code></pre>
+                <div class="fragment" data-fragment-index="0">
+                <p>This compiles to the function:</p>
+                <pre><code class="html" data-trim data-noescape>
+(func $accum <span class="fragment highlight-current-blue" data-fragment-index="2">(param $i i32) (param $end i32)</span> (result i32)
+    <span class="fragment highlight-current-blue" data-fragment-index="1">(local $sum i32)</span>
+    <span class="fragment highlight-current-blue" data-fragment-index="3">(loop</span> <span class="fragment highlight-current-blue" data-fragment-index="4">$break</span> <span class="fragment highlight-current-blue" data-fragment-index="3">$top</span>
+        <span class="fragment highlight-current-blue" data-fragment-index="4">(br_if $break (i32.eq (get_local $i) (get_local $end)))</span>
+        <span class="fragment highlight-current-blue" data-fragment-index="1">(set_local $sum (i32.add (get_local $sum)</span>
+                                 <span class="fragment highlight-current-blue" data-fragment-index="2">(i32.load (get_local $i))</span>))
+        <span class="fragment highlight-current-blue" data-fragment-index="5">(set_local $i (i32.add (get_local $i) (i32.const 4)))</span>
+        <span class="fragment highlight-current-blue" data-fragment-index="3">(br $top)
+    )</span>
+    <span class="fragment highlight-current-blue" data-fragment-index="1">(get_local $sum)</span>
+) <span class="fragment fade-in yay" data-fragment-index="6">\o/</span>
+                </code></pre>
+                </div>
+            </section>
+
+
+            <section>
+                <p>The containg module declares and exports <code>memory</code></p>
+                <pre><code class="lisp" data-trim>
+(module
+    (memory 1)  ;; declare one page of memory = 64KiB
+    (export "memory" memory)
+    (func $accum ...)
+    (export "accum" $accum)
+)
+                </code></pre>
+                <p>Which we can then access from JS:</p>
+                <pre><code class="js" data-trim>
+var codeBytes = ...;
+var instance = Wasm.instantiateModule(codeBytes);
+
+// Create an array of integers 1..10
+var i32 = new Int32Array(instance.exports.memory);
+for (var i = 0; i < 10; i++)
+    i32[i] = i + 1;
+
+console.log(instance.exports.accum(0, 10 * 4));  // "55"
+                </code></pre>
+            </section>
+
+            <section>
+                <h2>End of the Tour</h2>
+                <p>What we've seen so far:</p>
+                <ul>
+                    <li>Calling to and from JavaScript</li>
+                    <li>ES6 module integration ☃</li>
+                    <li>Computation</li>
+                </ul>
+                <p class="fragment">But what about APIs?</p>
+            </section>
+
+
+            <section>
+                <p>On a traditional virtual platform:</p>
+                <img src="traditional-vm-platform.png" />
+                <p>&nbsp;</p>
+            </section>
+
+
+            <section>
+                <p>My impression when I started working on Firefox:<p>
+                <img src="old-web-platform.png" />
+                <p>(Only a decade or two out of date :)</p>
+            </section>
+
+
+            <section>
+                <p>But the Web has changed a lot since then</p>
+                <img src="web-platform-1.png" />
+                <p>and is starting to resemble a traditional virtual platform</p>
+            </section>
+            <section>
+                <p>... with some special "Webby" properties like:<p>
+                <img src="web-platform-2.png" />
+                <p>... open standards, multiple implementations, etc<p>
+            </section>
+            <section>
+                <p class="fragment">Q: So what are WebAssembly APIs? A: Web APIs!</p>
+                <img src="web-platform-wasm.png" />
+                <p class="fragment blue">This is a key difference from plugin architectures</p>
+            </section>
+
+
+            <section>
+                <h2>Web API integration</h2>
+                <p>Today, WebAssembly only gets to Web APIs by "thunking" through JavaScript</p>
+                <p>(That's what the WebAssembly <a href="http://webassembly.github.io/demo">demo</a> is doing)</p>
+                <p>☃ In the future, support calling Web APIs <em>directly</em></p>
+            </section>
+
+
+            <section>
+                <h2>Web API integration</h2>
+                <p>Emscripten maps common C/C++ interfaces to Web APIs</p>
+                <p>For example, using libc and SDL:</p>
+                <pre><code class="c" data-trim>
+#include &lt;SDL/SDL.h&gt;
+#include &lt;stdio.h&gt;
+
+int main(int argc, char **argv) {
+  SDL_Init(SDL_INIT_VIDEO);
+  SDL_Surface *s = SDL_SetVideoMode(200, 200, 32, SDL_HWSURFACE);
+  SDL_Rect rect = { 50, 50, 100, 100 };
+  SDL_FillRect(s, &rect, 0xffff0000);
+  printf("Done!\n");
+  return 0;
+}
+                </code></pre>
+                <p>Compiled by Emscripten with:</p>
+                <pre><code class="bash" data-trim>
+emcc -O2 test.c -o test.html
+                </code></pre>
+            </section>
+
+
+            <section>
+                <h2>Web API integration</h2>
+                <p>Which produces a default HTML harness:</p>
+                <iframe allowfullscreen style="background-color:white;" width="400" height="350" data-src="sdl-demo.html"></iframe>
+            </section>
+
+
+            <section>
+                <h2>Beyond compiling C/C++</h2>
+                <p>Currently, WebAssembly only has <em>linear memory</em></p>
+                <p>Great if your language has a low-level memory model</p>
+                <p>But if your language has GC:</p>
+                <ul>
+                    <li>would need to implement/ship your own GC</li>
+                    <li>which misses optimizations in browser GC</li>
+                    <li>cannot collect cycles involving browser objects</li>
+                </ul>
+            </section>
+
+
+            <section>
+                <h2>Beyond compiling C/C++</h2>
+                <p>To provide first-class support for GC languages, WebAssembly needs direct GC access</p>
+                <p>☃ Goal: add <em>low-level</em> GC primitives to avoid baking in one language's class model</p>
+                <p>☃ Goal: share GC heap with JS, allow objects/strings/values to flow back and forth</p>
+            </section>
+
+
+            <section>
+                <h2>Beyond compiling C/C++</h2>
+                <p>Also need some fundamental extensions to the (shared JS + WebAssembly) GC:</p>
+                <ul class="snowmen-list">
+                    <li>Typed Objects</li>
+                    <li>Postmortem Notification</li>
+                    <li>Weak References</li>
+                </ul>
+            </section>
+
+
+            <section>
+                <h2>Beyond compiling C/C++</h2>
+                <p>Need even <em>more</em> features in WebAssembly to run dynamic languages <em>efficiently</em>:</p>
+                <ul class="snowmen-list">
+                    <li>Patching: immediates, branch targets, return address, ...</li>
+                    <li>Fine-grained (stub) compilation</li>
+                    <li>Good dynamic/any value support</li>
+                </ul>
+                <p class="fragment">So "compiling JS to WebAssembly": not going to make anything faster any time soon</p>
+            </section>
+
+
+            <section>
+                <h2>Beyond compiling C/C++</h2>
+                <p>Also need a good source-maps story</p>
+                <ul>
+                    <li>debug/profile in source language</li>
+                    <li>avoid size problems of today's source maps</li>
+                    <li> avoid specifying "WebDWARF"</li>
+                </ul>
+            </section>
+
+
+            <section>
+                <h2>How will WebAssembly be Used?</h2>
+                <p>Hard to predict, but we can extrapolate from asm.js today:</p>
+                <ul>
+                    <li class="fragment">Implicitly through JS frameworks
+                        <ul><li>E.g., in Yehuda Katz's Ember talk yesterday</li></ul>
+                    </li>
+                    <li class="fragment">Explicitly through individual WebAssembly libraries
+                        <ul><li>E.g., <a href="https://github.com/kripken/ammo.js/">ammo.js</a>, <a href="https://github.com/kripken/sql.js/">sql.js</a>, <a href="https://github.com/vibornoff/asmcrypto.js">asmCrypto.js</a>, <a href="http://mxr.mozilla.org/mozilla-central/source/browser/components/translation/cld2/">cld</a>, <a href="http://ba3.us/web-api">BA3</a>, ...</li></ul>
+                    </li>
+                    <li class="fragment">Whole WebAssembly engine + JS frontend
+                        <ul><li>E.g., <a href="http://mathstud.io/">MathStudio</a>, <a href="https://lightroom.adobe.com/">Adobe Lightroom</a>, ...</li></ul>
+                    </li>
+                    <li class="fragment">WebAssembly driving a big canvas with JS chrome
+                        <ul><li>E.g., <a href="http://formit360.autodesk.com/app/">AutoDesk FormIt</a>, <a href="https://www.facebook.com/topeleven">Unity games in Facebook</a>, ...</li></ul>
+                    </li>
+                    <li class="fragment">WebAssembly driving one-big-canvas ports
+                        <ul class="fragment"><li><strike>Bespoke canvas reimplementations of HTML/CSS</strike></li></ul>
+                    </li>
+                </ul>
+            </section>
+
+
+            <section>
+                <h2>Will WebAssembly Replace JS?</h2>
+                <p>No. Why?</p>
+                <ul>
+                    <li>JS remains the privileged high-level language of the Web</li>
+                    <li>JS has huge and growing momentum, vibrant ecosystem</li>
+                </ul>
+                <div class="fragment">
+                    <p>In fact, WebAssembly may have quite the opposite effect:</p>
+                    <p>
+                        If you're going to target WebAssembly and your app needs a
+                        scripting language, JS is a natural choice...
+                    </p>
+                </div>
+            </section>
+
+
+            <section>
+                <h2>Conclusion</h2>
+                <ul>
+                    <li>Binary and text format</li>
+                    <li>Low-level compiler target</li>
+                    <li>Many ways and reasons to use</li>
+                    <li>Part of the Web platform, sibling to JavaScript</li>
+                    <li>Support more languages in the future</li>
+                </ul>
+            </section>
+
+
+            <section>
+                <h2>Thanks! Questions?</h2>
+                <p>find out more at <a href="http://webassembly.github.io/">webassembly.github.io</a></p>
+                <p>experiment using <a href="https://github.com/WebAssembly/binaryen">Binaryen</a></p>
+                <p><a href="http://lukewagner.name">Luke Wagner</a> / <a href="https://twitter.com/luke_wagner">@luke_wagner</a></p>
+            </section>
+
+
+        </div></div>
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+		<script>
+			Reveal.initialize({
+				controls: false,
+				progress: false,
+				history: true,
+				center: true,
+				transition: 'fade',
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+				]
+			});
+		</script>
+	</body>
+</html>
