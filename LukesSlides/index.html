@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<title>WebAssembly - Philly ETE 2016</title>
+		<title>WebAssembly</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
 		<link rel="stylesheet" href="css/reveal.css">
 		<link rel="stylesheet" href="css/theme/black.css" id="theme">
@@ -39,27 +39,13 @@
 
             <section>
                 <h1>WebAssembly</h1>
-                <h3>A New Compiler Target for the Web</h3>
-                <p><small>
-                    people.mozilla.org/~lwagner/philly-ete-2016<br><br>
-                    <a href="http://lukewagner.name">Luke Wagner</a> / <a href="https://twitter.com/luke_wagner">@luke_wagner</a>
-                </small></p>
+                <h3>(Do we all have to learn C now?)</h3>
+                <p><a href="http://dancallahan.info">Dan Callahan</a> / <a href="https://twitter.com/callahad">@callahad</a></p>
             </section>
 
-
             <section>
-                <h2>About me</h2>
-                <p>Engineer at Mozilla { JS engine, Research } 6 years</p>
-                <p>SpiderMonkey (Firefox JavaScript engine) hacker:<p>
-                <table>
-                    <tr>
-                        <td><img src="trace.jpg" /><br><center><small>2008 - 2011</small></center></td>
-                        <td><img src="jaeger.jpg" /><br><center><small>2010 - 2013</small></center></td>
-                        <td><img src="ion.jpg" /><br><center><small>2012 -</small></center></td>
-                        <td><img src="odin.jpg" /><br><center><small>2013 - </small></center></td>
-                    </tr>
-                </table>
-                <p>Co-chair WebAssembly W3C Community Group</p>
+                <p><em>Slides derived from a deck by <br> <a href="http://lukewagner.name">Luke Wagner</a> / <a href="https://twitter.com/luke_wagner">@luke_wagner</a></em></p>
+                <p><small>(Mozillian, Co-chair WebAssembly W3C Community Group)</small></p>
             </section>
 
 
@@ -70,9 +56,9 @@
                     <li>Why do we need WebAssembly?</li>
                     <li>Little tour of WebAssembly</li>
                     <li>APIs</li>
-                    <li>Beyond compiling C/C++</li>
+                    <li>Beyond just C/C++</li>
                     <li>How will WebAssembly be used?</li>
-                    <li>Will WebAssembly replace JS? <small class="fragment">(Spoiler alert: no)</small></li>
+                    <li>Will WebAssembly replace JS?</li>
                 </ul>
             </section>
 
@@ -86,16 +72,16 @@
                 </p>
                 <ol>
                     <li>
-                        a <span class="fragment highlight-current-blue">compact</span>, 
-                        <span class="fragment highlight-current-blue">portable</span> <em>binary format</em> which is
-                        <span class="fragment highlight-current-blue">fast to load</span> and runs
-                        <span class="fragment highlight-current-blue">safely</span> at 
-                        <span class="fragment highlight-current-blue">predictably near-native speed</span>
+                        a compact, 
+                        portable <em class="fragment highlight-current-blue">binary format</em> which is
+                        fast to load and runs
+                        safely at 
+                        predictably near-native speed
                     </li>
                     <li>
-                        a <span class="fragment highlight-current-blue">1:1</span> <em>text format</em>
+                        a 1:1 <em class="fragment highlight-current-blue">text format</em>
                         rendered by developer tools when 
-                        <span class="fragment highlight-current-blue">viewing source</span>
+                        viewing source
                     </li>
                 </ol>
             </section>
@@ -149,7 +135,6 @@
                         <td>check + <code>LDR</code></td>
                     </tr>
                 </table>
-                <p>"check" can safely eliminated on 64-bit, hoistable otherwise</p>
             </section>
 
 
@@ -258,14 +243,6 @@
 
 
             <section>
-                <h2>Why WebAssembly?</h2>
-                <p>tl;dr</p>
-                <a href="https://www.youtube.com/watch?v=hFDcoX7s6rE"><img src="want-it-all.gif" /></a>
-                <p>And I want it on the Web!</p>
-            </section>
-
-
-            <section>
                 <p><img src="construction.gif" /></p>
                 <p>WebAssembly is a Work In Progress</p>
                 <p>Recently reached Firefox/Chrome/Edge interop <a href="http://webassembly.github.io/demo">milestone</a>!</p>
@@ -289,7 +266,7 @@
             </section>
             <section>
                 <p><img src="construction.gif" /></p>
-                <p>Other things that are speculative or NYI are marked ☃</p>
+                <p>Other things that are speculative <br> or not yet implemented are marked ☃</p>
             </section>
 
 
@@ -527,16 +504,9 @@ console.log(instance.exports.accum(0, 10 * 4));  // "55"
 
 
             <section>
-                <p>My impression when I started working on Firefox:<p>
-                <img src="old-web-platform.png" />
-                <p>(Only a decade or two out of date :)</p>
-            </section>
-
-
-            <section>
-                <p>But the Web has changed a lot since then</p>
+                <p>On a modern Web browser:</p>
                 <img src="web-platform-1.png" />
-                <p>and is starting to resemble a traditional virtual platform</p>
+                <p>The Web is starting to resemble a traditional virtual platform</p>
             </section>
             <section>
                 <p>... with some special "Webby" properties like:<p>
@@ -552,8 +522,7 @@ console.log(instance.exports.accum(0, 10 * 4));  // "55"
 
             <section>
                 <h2>Web API integration</h2>
-                <p>Today, WebAssembly only gets to Web APIs by "thunking" through JavaScript</p>
-                <p>(That's what the WebAssembly <a href="http://webassembly.github.io/demo">demo</a> is doing)</p>
+                <p>Today, WebAssembly only gets to Web APIs by <br> "thunking" through JavaScript</p>
                 <p>☃ In the future, support calling Web APIs <em>directly</em></p>
             </section>
 
@@ -590,7 +559,7 @@ emcc -O2 test.c -o test.html
 
 
             <section>
-                <h2>Beyond compiling C/C++</h2>
+                <h2>Beyond just C/C++</h2>
                 <p>Currently, WebAssembly only has <em>linear memory</em></p>
                 <p>Great if your language has a low-level memory model</p>
                 <p>But if your language has GC:</p>
@@ -603,7 +572,7 @@ emcc -O2 test.c -o test.html
 
 
             <section>
-                <h2>Beyond compiling C/C++</h2>
+                <h2>Beyond just C/C++</h2>
                 <p>To provide first-class support for GC languages, WebAssembly needs direct GC access</p>
                 <p>☃ Goal: add <em>low-level</em> GC primitives to avoid baking in one language's class model</p>
                 <p>☃ Goal: share GC heap with JS, allow objects/strings/values to flow back and forth</p>
@@ -611,8 +580,8 @@ emcc -O2 test.c -o test.html
 
 
             <section>
-                <h2>Beyond compiling C/C++</h2>
-                <p>Also need some fundamental extensions to the (shared JS + WebAssembly) GC:</p>
+                <h2>Beyond just C/C++</h2>
+                <p>Also need some fundamental extensions <br> to the (shared JS + WebAssembly) GC:</p>
                 <ul class="snowmen-list">
                     <li>Typed Objects</li>
                     <li>Postmortem Notification</li>
@@ -622,19 +591,18 @@ emcc -O2 test.c -o test.html
 
 
             <section>
-                <h2>Beyond compiling C/C++</h2>
-                <p>Need even <em>more</em> features in WebAssembly to run dynamic languages <em>efficiently</em>:</p>
+                <h2>Beyond just C/C++</h2>
+                <p>Need even <em>more</em> features in WebAssembly to <br> run dynamic languages <em>efficiently</em>:</p>
                 <ul class="snowmen-list">
                     <li>Patching: immediates, branch targets, return address, ...</li>
                     <li>Fine-grained (stub) compilation</li>
                     <li>Good dynamic/any value support</li>
                 </ul>
-                <p class="fragment">So "compiling JS to WebAssembly": not going to make anything faster any time soon</p>
             </section>
 
 
             <section>
-                <h2>Beyond compiling C/C++</h2>
+                <h2>Beyond just C/C++</h2>
                 <p>Also need a good source-maps story</p>
                 <ul>
                     <li>debug/profile in source language</li>
@@ -648,9 +616,7 @@ emcc -O2 test.c -o test.html
                 <h2>How will WebAssembly be Used?</h2>
                 <p>Hard to predict, but we can extrapolate from asm.js today:</p>
                 <ul>
-                    <li class="fragment">Implicitly through JS frameworks
-                        <ul><li>E.g., in Yehuda Katz's Ember talk yesterday</li></ul>
-                    </li>
+                    <li class="fragment">Implicitly through JS frameworks</li>
                     <li class="fragment">Explicitly through individual WebAssembly libraries
                         <ul><li>E.g., <a href="https://github.com/kripken/ammo.js/">ammo.js</a>, <a href="https://github.com/kripken/sql.js/">sql.js</a>, <a href="https://github.com/vibornoff/asmcrypto.js">asmCrypto.js</a>, <a href="http://mxr.mozilla.org/mozilla-central/source/browser/components/translation/cld2/">cld</a>, <a href="http://ba3.us/web-api">BA3</a>, ...</li></ul>
                     </li>
@@ -699,8 +665,7 @@ emcc -O2 test.c -o test.html
             <section>
                 <h2>Thanks! Questions?</h2>
                 <p>find out more at <a href="http://webassembly.github.io/">webassembly.github.io</a></p>
-                <p>experiment using <a href="https://github.com/WebAssembly/binaryen">Binaryen</a></p>
-                <p><a href="http://lukewagner.name">Luke Wagner</a> / <a href="https://twitter.com/luke_wagner">@luke_wagner</a></p>
+                <p><a href="http://dancallahan.info">Dan Callahan</a> / <a href="https://twitter.com/callahad">@callahad</a></p>
             </section>
 
 
