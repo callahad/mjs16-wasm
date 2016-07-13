@@ -1746,7 +1746,7 @@ function Nb(a) {
  return;
 }
 
-function Eb(a, b, d) {
+function Fb(a, b, d) {
  a = a | 0;
  b = b | 0;
  d = d | 0;
@@ -1916,7 +1916,7 @@ function Kb(a) {
    while (1) {
     if ((c[f + 76 >> 2] | 0) > -1) g = Jb(f) | 0; else g = 0;
     if ((c[f + 20 >> 2] | 0) >>> 0 > (c[f + 28 >> 2] | 0) >>> 0) h = Lb(f) | 0 | d; else h = d;
-    if (g | 0) Gb(f);
+    if (g | 0) Hb(f);
     f = c[f + 56 >> 2] | 0;
     if (!f) {
      e = h;
@@ -1934,7 +1934,7 @@ function Kb(a) {
   d = (Jb(a) | 0) == 0;
   f = Lb(a) | 0;
   if (d) i = f; else {
-   Gb(a);
+   Hb(a);
    i = f;
   }
  } while (0);
@@ -2028,7 +2028,7 @@ function Pb(b, d, e) {
  return b - e | 0;
 }
 
-function Hb(a, b, d) {
+function Ib(a, b, d) {
  a = a | 0;
  b = b | 0;
  d = d | 0;
@@ -2050,7 +2050,7 @@ function Hb(a, b, d) {
  return h | 0;
 }
 
-function Ib(b, d, e) {
+function Eb(b, d, e) {
  b = b | 0;
  d = d | 0;
  e = e | 0;
@@ -2065,7 +2065,7 @@ function Ib(b, d, e) {
   c[g + 8 >> 2] = f + 12;
   if (da(54, g | 0) | 0) a[b + 75 >> 0] = -1;
  }
- g = Eb(b, d, e) | 0;
+ g = Fb(b, d, e) | 0;
  i = f;
  return g | 0;
 }
@@ -2203,9 +2203,9 @@ function Vb(a, b) {
  return nb[a & 1](b | 0) | 0;
 }
 
-function Fb(a) {
+function Gb(a) {
  a = a | 0;
- if (!(c[a + 68 >> 2] | 0)) Gb(a);
+ if (!(c[a + 68 >> 2] | 0)) Hb(a);
  return;
 }
 
@@ -2251,7 +2251,7 @@ function Jb(a) {
  return 0;
 }
 
-function Gb(a) {
+function Hb(a) {
  a = a | 0;
  return;
 }
@@ -2289,8 +2289,8 @@ function bc() {
 
 // EMSCRIPTEN_END_FUNCS
 
- var kb = [ Yb, Ib, Hb, Eb ];
- var lb = [ Zb, Fb ];
+ var kb = [ Yb, Eb, Ib, Fb ];
+ var lb = [ Zb, Gb ];
  var mb = [ _b, yb ];
  var nb = [ $b, Bb ];
  var ob = [ ac, zb ];

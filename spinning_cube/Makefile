@@ -1,5 +1,14 @@
+kernel := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+
+ifeq ($(kernel),Linux)
+    CLANG_ARGS = -lGL -lGLU -lglut
+endif
+ifeq ($(kernel),Darwin)
+    CLANG_ARGS = -framework GLUT -framework OpenGL -Wno-deprecated
+endif
+
 native:
-	clang -framework GLUT -framework OpenGL -Wno-deprecated main.c -o cube
+	clang $(CLANG_ARGS) main.c -o cube
 
 asm:
 	emcc -O2 -s LEGACY_GL_EMULATION=1 -o cube.html main.c

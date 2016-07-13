@@ -6,13 +6,13 @@
   </head>
   <body>
     <h1>What the Heck is WebAssembly, and do I Have to Learn C Now?</h1>
-    <p>Presented by <a href="https://twitter.com/callahad">@callahad</a> at <a href="http://twincitiescodecamp.com/#/Talks/22">Twin Cities Code Camp</a>, April 2016.</p>
+    <p>Presented by <a href="https://twitter.com/callahad">@callahad</a> at <a href="https://joind.in/event/openwest-2016/what-the-heck-is-webassembly-and-do-i-have-to-learn-c-now">OpenWest 2016</a>, July 2016.</p>
 
-    <p><em><strong>Note:</strong> As of April 2016, you must use <a href="https://nightly.mozilla.org/">Firefox Nightly</a> and manually set <code>javascript.options.wasm</code> to <code>true</code> in <code>about:config</code>, or use <a href="https://www.google.com/chrome/browser/canary.html">Chrome Canary</a> and enable "Experimental WebAssembly" in <code>chrome://flags</code> for native WebAssembly to work.</em></p>
+    <p><em><strong>Note:</strong> As of July 2016, you must use <a href="https://nightly.mozilla.org/">Firefox Nightly</a> and manually set <code>javascript.options.wasm</code> to <code>true</code> in <code>about:config</code>, or use <a href="https://www.google.com/chrome/browser/canary.html">Chrome Canary</a> and enable "Experimental WebAssembly" in <code>chrome://flags</code> for native WebAssembly to work.</em></p>
 
     <ul>
         <li><a href="./slides">View the slides</a> (GitHub Pages)</li>
-        <li><a href="https://github.com/callahad/tccc20-wasm">View the repo</a> (GitHub)</li>
+        <li><a href="https://github.com/callahad/ow16-wasm">View the repo</a> (GitHub)</li>
         <li>Spinning Cube demo (<a href="./spinning_cube/cube-wasm-only.html">Wasm only</a>, <a href="./spinning_cube/cube-wasm-asm.html">Wasm with asm.js fallback</a>)</li>
     </ul>
 
@@ -20,6 +20,7 @@
 
     <ul>
       <li><a href="https://webassembly.github.io/">webassembly.github.io</a> &mdash; W3C WebAssembly Community Group's homepage</li>
+      <li><a href="http://mbebenita.github.io/WasmExplorer/">WebAssembly Explorer</a> &mdash; Interactive, browser-based interface to the LLVM/Emscripten/Binaryen toolchain</li>
       <li><a href="https://kripken.github.io/emscripten-site/">Emscripten</a> &mdash; Compiler C/C++ to JavaScript/asm.js</li>
       <li><a href="https://github.com/WebAssembly/binaryen">Binaryen</a> &mdash; Compiler from asm.js to wasm</li>
       <li><a href="http://pypyjs.org/">PyPy.js</a> &mdash; The PyPy Python interpreter compiled into asm.js</li>
@@ -33,6 +34,7 @@
     <p>Good Blog Posts / Presentations</p>
 
     <ul>
+      <li><a href="https://www.youtube.com/watch?v=RByPdCN1RQ4">NYLUG Presents: Luke Wagner -on- WebAssembly: A New Compiler Target For The Web</a></li>
       <li><a href="https://hacks.mozilla.org/2016/03/a-webassembly-milestone/">"A WebAssembly Milestone: Experimental Support in Multiple Browsers"</a> &mdash; Also see the coordinated announcements from <a href="http://v8project.blogspot.com/2016/03/experimental-support-for-webassembly.html">Google</a> and <a href="https://blogs.windows.com/msedgedev/2016/03/15/previewing-webassembly-experiments/">Microsoft</a></li>
       <li><a href="https://hacks.mozilla.org/2015/12/compiling-to-webassembly-its-happening/">"Compiling to WebAssembly: It’s Happening!"</a> &mdash; Overview of Binaryen and LLVM's upcoming WebAssembly backend</li>
       <li><a href="https://kripken.github.io/talks/wasm.html">Emscripten and WebAssembly</a> &mdash; Presentation from the Emscripten developer on the WebAssembly toolchain</li>

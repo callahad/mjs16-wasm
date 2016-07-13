@@ -109,41 +109,45 @@ function integrateWasmJS(Module) {
   }
   return binary;
  }
- function doJustAsm() {
-  if (typeof Module["asm"] !== "function") {
-   eval(Module["read"](asmjsCodeFile));
+ function doJustAsm(global, env, providedBuffer) {
+  if (typeof Module["asm"] !== "function" || Module["asm"] === methodHandler) {
+   if (!Module["asmPreload"]) {
+    eval(Module["read"](asmjsCodeFile));
+   } else {
+    Module["asm"] = Module["asmPreload"];
+   }
   }
   if (typeof Module["asm"] !== "function") {
    Module["printErr"]("asm evalling did not set the module properly");
    return false;
   }
-  return true;
+  return Module["asm"](global, env, providedBuffer);
  }
- function doNativeWasm() {
+ function doNativeWasm(global, env, providedBuffer) {
   if (typeof Wasm !== "object") {
    Module["printErr"]("no native wasm support detected");
    return false;
   }
-  Module["asm"] = (function(global, env, providedBuffer) {
-   global = fixImports(global);
-   env = fixImports(env);
-   info["global"] = {
-    "NaN": NaN,
-    "Infinity": Infinity
-   };
-   info["global.Math"] = global.Math;
-   info["env"] = env;
-   var instance;
-   instance = Wasm.instantiateModule(getBinary(), info);
-   exports = instance.exports;
-   mergeMemory(exports.memory);
-   applyMappedGlobals(wasmBinaryFile);
-   return exports;
-  });
+  info["global"] = {
+   "NaN": NaN,
+   "Infinity": Infinity
+  };
+  info["global.Math"] = global.Math;
+  info["env"] = env;
+  var instance;
+  try {
+   instance = Wasm["instantiateModule"](getBinary(), info);
+  } catch (e) {
+   Module["printErr"]("failed to compile wasm module: " + e);
+   return false;
+  }
+  exports = instance.exports;
+  mergeMemory(exports.memory);
+  applyMappedGlobals(wasmBinaryFile);
   Module["usingWasm"] = true;
-  return true;
+  return exports;
  }
- function doWasmPolyfill(method) {
+ function doWasmPolyfill(global, env, providedBuffer, method) {
   if (typeof WasmJS !== "function") {
    Module["printErr"]("WasmJS not detected - polyfill not bundled?");
    return false;
@@ -152,65 +156,70 @@ function integrateWasmJS(Module) {
   wasmJS["outside"] = Module;
   wasmJS["info"] = info;
   wasmJS["lookupImport"] = lookupImport;
-  Module["asm"] = (function(global, env, providedBuffer) {
-   global = fixImports(global);
-   env = fixImports(env);
-   assert(providedBuffer === Module["buffer"]);
-   info.global = global;
-   info.env = env;
-   wasmJS["providedTotalMemory"] = Module["buffer"].byteLength;
-   var code;
-   if (method === "interpret-binary") {
-    code = getBinary();
-   } else {
-    code = Module["read"](method == "interpret-asm2wasm" ? asmjsCodeFile : wasmTextFile);
-   }
-   var temp;
-   if (method == "interpret-asm2wasm") {
-    temp = wasmJS["_malloc"](code.length + 1);
-    wasmJS["writeAsciiToMemory"](code, temp);
-    wasmJS["_load_asm2wasm"](temp);
-   } else if (method === "interpret-s-expr") {
-    temp = wasmJS["_malloc"](code.length + 1);
-    wasmJS["writeAsciiToMemory"](code, temp);
-    wasmJS["_load_s_expr2wasm"](temp);
-   } else if (method === "interpret-binary") {
-    temp = wasmJS["_malloc"](code.length);
-    wasmJS["HEAPU8"].set(code, temp);
-    wasmJS["_load_binary2wasm"](temp, code.length);
-   } else {
-    throw "what? " + method;
-   }
-   wasmJS["_free"](temp);
-   wasmJS["_instantiate"](temp);
-   if (Module["newBuffer"]) {
-    mergeMemory(Module["newBuffer"]);
-    Module["newBuffer"] = null;
-   }
-   if (method == "interpret-s-expr") {
-    applyMappedGlobals(wasmTextFile);
-   } else if (method == "interpret-binary") {
-    applyMappedGlobals(wasmBinaryFile);
-   }
-   exports = wasmJS["asmExports"];
-   return exports;
-  });
-  return true;
- }
- var methods = method.split(",");
- for (var i = 0; i < methods.length; i++) {
-  var curr = methods[i];
-  if (curr === "native-wasm") {
-   if (doNativeWasm()) return;
-  } else if (curr === "asmjs") {
-   if (doJustAsm()) return;
-  } else if (curr === "interpret-asm2wasm" || curr === "interpret-s-expr" || curr === "interpret-binary") {
-   if (doWasmPolyfill(curr)) return;
+  assert(providedBuffer === Module["buffer"]);
+  info.global = global;
+  info.env = env;
+  wasmJS["providedTotalMemory"] = Module["buffer"].byteLength;
+  var code;
+  if (method === "interpret-binary") {
+   code = getBinary();
   } else {
-   throw "bad method: " + curr;
+   code = Module["read"](method == "interpret-asm2wasm" ? asmjsCodeFile : wasmTextFile);
   }
+  var temp;
+  if (method == "interpret-asm2wasm") {
+   temp = wasmJS["_malloc"](code.length + 1);
+   wasmJS["writeAsciiToMemory"](code, temp);
+   wasmJS["_load_asm2wasm"](temp);
+  } else if (method === "interpret-s-expr") {
+   temp = wasmJS["_malloc"](code.length + 1);
+   wasmJS["writeAsciiToMemory"](code, temp);
+   wasmJS["_load_s_expr2wasm"](temp);
+  } else if (method === "interpret-binary") {
+   temp = wasmJS["_malloc"](code.length);
+   wasmJS["HEAPU8"].set(code, temp);
+   wasmJS["_load_binary2wasm"](temp, code.length);
+  } else {
+   throw "what? " + method;
+  }
+  wasmJS["_free"](temp);
+  wasmJS["_instantiate"](temp);
+  if (Module["newBuffer"]) {
+   mergeMemory(Module["newBuffer"]);
+   Module["newBuffer"] = null;
+  }
+  if (method == "interpret-s-expr") {
+   applyMappedGlobals(wasmTextFile);
+  } else if (method == "interpret-binary") {
+   applyMappedGlobals(wasmBinaryFile);
+  }
+  exports = wasmJS["asmExports"];
+  return exports;
  }
- throw "no wasm method succeeded";
+ Module["asmPreload"] = Module["asm"];
+ Module["asm"] = (function(global, env, providedBuffer) {
+  global = fixImports(global);
+  env = fixImports(env);
+  var exports;
+  var methods = method.split(",");
+  for (var i = 0; i < methods.length; i++) {
+   var curr = methods[i];
+   Module["printErr"]("trying binaryen method: " + curr);
+   if (curr === "native-wasm") {
+    if (exports = doNativeWasm(global, env, providedBuffer)) break;
+   } else if (curr === "asmjs") {
+    if (exports = doJustAsm(global, env, providedBuffer)) break;
+   } else if (curr === "interpret-asm2wasm" || curr === "interpret-s-expr" || curr === "interpret-binary") {
+    if (exports = doWasmPolyfill(global, env, providedBuffer, curr)) break;
+   } else {
+    throw "bad method: " + curr;
+   }
+  }
+  if (!exports) throw "no binaryen method succeeded";
+  Module["printErr"]("binaryen method succeeded.");
+  return exports;
+ });
+ var methodHandler = Module["asm"];
 }
 var Module;
 if (!Module) Module = (typeof Module !== "undefined" ? Module : null) || {};
@@ -849,43 +858,50 @@ function stringToAscii(str, outPtr) {
  return writeAsciiToMemory(str, outPtr, false);
 }
 Module["stringToAscii"] = stringToAscii;
+var UTF8Decoder = typeof TextDecoder !== "undefined" ? new TextDecoder("utf8") : undefined;
 function UTF8ArrayToString(u8Array, idx) {
- var u0, u1, u2, u3, u4, u5;
- var str = "";
- while (1) {
-  u0 = u8Array[idx++];
-  if (!u0) return str;
-  if (!(u0 & 128)) {
-   str += String.fromCharCode(u0);
-   continue;
-  }
-  u1 = u8Array[idx++] & 63;
-  if ((u0 & 224) == 192) {
-   str += String.fromCharCode((u0 & 31) << 6 | u1);
-   continue;
-  }
-  u2 = u8Array[idx++] & 63;
-  if ((u0 & 240) == 224) {
-   u0 = (u0 & 15) << 12 | u1 << 6 | u2;
-  } else {
-   u3 = u8Array[idx++] & 63;
-   if ((u0 & 248) == 240) {
-    u0 = (u0 & 7) << 18 | u1 << 12 | u2 << 6 | u3;
+ var endPtr = idx;
+ while (u8Array[endPtr]) ++endPtr;
+ if (endPtr - idx > 16 && u8Array.subarray && UTF8Decoder) {
+  return UTF8Decoder.decode(u8Array.subarray(idx, endPtr));
+ } else {
+  var u0, u1, u2, u3, u4, u5;
+  var str = "";
+  while (1) {
+   u0 = u8Array[idx++];
+   if (!u0) return str;
+   if (!(u0 & 128)) {
+    str += String.fromCharCode(u0);
+    continue;
+   }
+   u1 = u8Array[idx++] & 63;
+   if ((u0 & 224) == 192) {
+    str += String.fromCharCode((u0 & 31) << 6 | u1);
+    continue;
+   }
+   u2 = u8Array[idx++] & 63;
+   if ((u0 & 240) == 224) {
+    u0 = (u0 & 15) << 12 | u1 << 6 | u2;
    } else {
-    u4 = u8Array[idx++] & 63;
-    if ((u0 & 252) == 248) {
-     u0 = (u0 & 3) << 24 | u1 << 18 | u2 << 12 | u3 << 6 | u4;
+    u3 = u8Array[idx++] & 63;
+    if ((u0 & 248) == 240) {
+     u0 = (u0 & 7) << 18 | u1 << 12 | u2 << 6 | u3;
     } else {
-     u5 = u8Array[idx++] & 63;
-     u0 = (u0 & 1) << 30 | u1 << 24 | u2 << 18 | u3 << 12 | u4 << 6 | u5;
+     u4 = u8Array[idx++] & 63;
+     if ((u0 & 252) == 248) {
+      u0 = (u0 & 3) << 24 | u1 << 18 | u2 << 12 | u3 << 6 | u4;
+     } else {
+      u5 = u8Array[idx++] & 63;
+      u0 = (u0 & 1) << 30 | u1 << 24 | u2 << 18 | u3 << 12 | u4 << 6 | u5;
+     }
     }
    }
-  }
-  if (u0 < 65536) {
-   str += String.fromCharCode(u0);
-  } else {
-   var ch = u0 - 65536;
-   str += String.fromCharCode(55296 | ch >> 10, 56320 | ch & 1023);
+   if (u0 < 65536) {
+    str += String.fromCharCode(u0);
+   } else {
+    var ch = u0 - 65536;
+    str += String.fromCharCode(55296 | ch >> 10, 56320 | ch & 1023);
+   }
   }
  }
 }
@@ -966,6 +982,7 @@ function lengthBytesUTF8(str) {
  return len;
 }
 Module["lengthBytesUTF8"] = lengthBytesUTF8;
+var UTF16Decoder = typeof TextDecoder !== "undefined" ? new TextDecoder("utf-16le") : undefined;
 function demangle(func) {
  var hasLibcxxabi = !!Module["___cxa_demangle"];
  if (hasLibcxxabi) {
@@ -1063,8 +1080,9 @@ if (Module["buffer"]) {
  buffer = new ArrayBuffer(TOTAL_MEMORY);
 }
 updateGlobalBufferViews();
-HEAP32[0] = 255;
-if (HEAPU8[0] !== 255 || HEAPU8[3] !== 0) throw "Typed arrays 2 must be run on a little-endian system";
+HEAP32[0] = 1668509029;
+HEAP16[1] = 25459;
+if (HEAPU8[2] !== 115 || HEAPU8[3] !== 99) throw "Runtime error: expected the system to be little-endian!";
 Module["HEAP"] = HEAP;
 Module["buffer"] = buffer;
 Module["HEAP8"] = HEAP8;
@@ -1286,6 +1304,7 @@ var GL = {
  vaos: [],
  contexts: [],
  currentContext: null,
+ offscreenCanvases: {},
  currArrayBuffer: 0,
  currElementArrayBuffer: 0,
  byteSizeByTypeRoot: 5120,
@@ -1508,6 +1527,7 @@ var GL = {
   var handle = GL.getNewId(GL.contexts);
   var context = {
    handle: handle,
+   attributes: webGLContextAttributes,
    version: webGLContextAttributes.majorVersion,
    GLctx: ctx
   };
@@ -1795,7 +1815,7 @@ var Browser = {
    if (Module["postMainLoop"]) Module["postMainLoop"]();
   })
  },
- isFullScreen: false,
+ isFullscreen: false,
  pointerLock: false,
  moduleContextCreatedCallbacks: [],
  workers: [],
@@ -1975,7 +1995,6 @@ var Browser = {
    if (contextHandle) {
     ctx = GL.getContext(contextHandle).GLctx;
    }
-   canvas.style.backgroundColor = "black";
   } else {
    ctx = canvas.getContext("2d");
   }
@@ -1993,10 +2012,10 @@ var Browser = {
   return ctx;
  }),
  destroyContext: (function(canvas, useWebGL, setInModule) {}),
- fullScreenHandlersInstalled: false,
+ fullscreenHandlersInstalled: false,
  lockPointer: undefined,
  resizeCanvas: undefined,
- requestFullScreen: (function(lockPointer, resizeCanvas, vrDevice) {
+ requestFullscreen: (function(lockPointer, resizeCanvas, vrDevice) {
   Browser.lockPointer = lockPointer;
   Browser.resizeCanvas = resizeCanvas;
   Browser.vrDevice = vrDevice;
@@ -2004,45 +2023,53 @@ var Browser = {
   if (typeof Browser.resizeCanvas === "undefined") Browser.resizeCanvas = false;
   if (typeof Browser.vrDevice === "undefined") Browser.vrDevice = null;
   var canvas = Module["canvas"];
-  function fullScreenChange() {
-   Browser.isFullScreen = false;
+  function fullscreenChange() {
+   Browser.isFullscreen = false;
    var canvasContainer = canvas.parentNode;
-   if ((document["webkitFullScreenElement"] || document["webkitFullscreenElement"] || document["mozFullScreenElement"] || document["mozFullscreenElement"] || document["fullScreenElement"] || document["fullscreenElement"] || document["msFullScreenElement"] || document["msFullscreenElement"] || document["webkitCurrentFullScreenElement"]) === canvasContainer) {
-    canvas.cancelFullScreen = document["cancelFullScreen"] || document["mozCancelFullScreen"] || document["webkitCancelFullScreen"] || document["msExitFullscreen"] || document["exitFullscreen"] || (function() {});
-    canvas.cancelFullScreen = canvas.cancelFullScreen.bind(document);
+   if ((document["fullscreenElement"] || document["mozFullScreenElement"] || document["msFullscreenElement"] || document["webkitFullscreenElement"] || document["webkitCurrentFullScreenElement"]) === canvasContainer) {
+    canvas.exitFullscreen = document["exitFullscreen"] || document["cancelFullScreen"] || document["mozCancelFullScreen"] || document["msExitFullscreen"] || document["webkitCancelFullScreen"] || (function() {});
+    canvas.exitFullscreen = canvas.exitFullscreen.bind(document);
     if (Browser.lockPointer) canvas.requestPointerLock();
-    Browser.isFullScreen = true;
-    if (Browser.resizeCanvas) Browser.setFullScreenCanvasSize();
+    Browser.isFullscreen = true;
+    if (Browser.resizeCanvas) Browser.setFullscreenCanvasSize();
    } else {
     canvasContainer.parentNode.insertBefore(canvas, canvasContainer);
     canvasContainer.parentNode.removeChild(canvasContainer);
     if (Browser.resizeCanvas) Browser.setWindowedCanvasSize();
    }
-   if (Module["onFullScreen"]) Module["onFullScreen"](Browser.isFullScreen);
+   if (Module["onFullScreen"]) Module["onFullScreen"](Browser.isFullscreen);
+   if (Module["onFullscreen"]) Module["onFullscreen"](Browser.isFullscreen);
    Browser.updateCanvasDimensions(canvas);
   }
-  if (!Browser.fullScreenHandlersInstalled) {
-   Browser.fullScreenHandlersInstalled = true;
-   document.addEventListener("fullscreenchange", fullScreenChange, false);
-   document.addEventListener("mozfullscreenchange", fullScreenChange, false);
-   document.addEventListener("webkitfullscreenchange", fullScreenChange, false);
-   document.addEventListener("MSFullscreenChange", fullScreenChange, false);
+  if (!Browser.fullscreenHandlersInstalled) {
+   Browser.fullscreenHandlersInstalled = true;
+   document.addEventListener("fullscreenchange", fullscreenChange, false);
+   document.addEventListener("mozfullscreenchange", fullscreenChange, false);
+   document.addEventListener("webkitfullscreenchange", fullscreenChange, false);
+   document.addEventListener("MSFullscreenChange", fullscreenChange, false);
   }
   var canvasContainer = document.createElement("div");
   canvas.parentNode.insertBefore(canvasContainer, canvas);
   canvasContainer.appendChild(canvas);
-  canvasContainer.requestFullScreen = canvasContainer["requestFullScreen"] || canvasContainer["mozRequestFullScreen"] || canvasContainer["msRequestFullscreen"] || (canvasContainer["webkitRequestFullScreen"] ? (function() {
-   canvasContainer["webkitRequestFullScreen"](Element["ALLOW_KEYBOARD_INPUT"]);
-  }) : null) || (canvasContainer["webkitRequestFullscreen"] ? (function() {
+  canvasContainer.requestFullscreen = canvasContainer["requestFullscreen"] || canvasContainer["mozRequestFullScreen"] || canvasContainer["msRequestFullscreen"] || (canvasContainer["webkitRequestFullscreen"] ? (function() {
    canvasContainer["webkitRequestFullscreen"](Element["ALLOW_KEYBOARD_INPUT"]);
+  }) : null) || (canvasContainer["webkitRequestFullScreen"] ? (function() {
+   canvasContainer["webkitRequestFullScreen"](Element["ALLOW_KEYBOARD_INPUT"]);
   }) : null);
   if (vrDevice) {
-   canvasContainer.requestFullScreen({
+   canvasContainer.requestFullscreen({
     vrDisplay: vrDevice
    });
   } else {
-   canvasContainer.requestFullScreen();
+   canvasContainer.requestFullscreen();
   }
+ }),
+ requestFullScreen: (function(lockPointer, resizeCanvas, vrDevice) {
+  Module.printErr("Browser.requestFullScreen() is deprecated. Please call Browser.requestFullscreen instead.");
+  Browser.requestFullScreen = (function(lockPointer, resizeCanvas, vrDevice) {
+   return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
+  });
+  return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
  }),
  nextRAF: 0,
  fakeRequestAnimationFrame: (function(func) {
@@ -2246,7 +2273,7 @@ var Browser = {
  }),
  windowedWidth: 0,
  windowedHeight: 0,
- setFullScreenCanvasSize: (function() {
+ setFullscreenCanvasSize: (function() {
   if (typeof SDL != "undefined") {
    var flags = HEAPU32[SDL.screen + Runtime.QUANTUM_SIZE * 0 >> 2];
    flags = flags | 8388608;
@@ -2279,7 +2306,7 @@ var Browser = {
     h = Math.round(w / Module["forcedAspectRatio"]);
    }
   }
-  if ((document["webkitFullScreenElement"] || document["webkitFullscreenElement"] || document["mozFullScreenElement"] || document["mozFullscreenElement"] || document["fullScreenElement"] || document["fullscreenElement"] || document["msFullScreenElement"] || document["msFullscreenElement"] || document["webkitCurrentFullScreenElement"]) === canvas.parentNode && typeof screen != "undefined") {
+  if ((document["fullscreenElement"] || document["mozFullScreenElement"] || document["msFullscreenElement"] || document["webkitFullscreenElement"] || document["webkitCurrentFullScreenElement"]) === canvas.parentNode && typeof screen != "undefined") {
    var factor = Math.min(screen.width / w, screen.height / h);
    w = Math.round(w * factor);
    h = Math.round(h * factor);
@@ -2568,18 +2595,18 @@ var GLUT = {
    Runtime.dynCall("viiii", GLUT.mouseFunc, [ button, 0, Browser.mouseX, Browser.mouseY ]);
   }
  }),
- onFullScreenEventChange: (function(event) {
+ onFullscreenEventChange: (function(event) {
   var width;
   var height;
-  if (document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
+  if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
    width = screen["width"];
    height = screen["height"];
   } else {
    width = GLUT.windowWidth;
    height = GLUT.windowHeight;
-   document.removeEventListener("fullscreenchange", GLUT.onFullScreenEventChange, true);
-   document.removeEventListener("mozfullscreenchange", GLUT.onFullScreenEventChange, true);
-   document.removeEventListener("webkitfullscreenchange", GLUT.onFullScreenEventChange, true);
+   document.removeEventListener("fullscreenchange", GLUT.onFullscreenEventChange, true);
+   document.removeEventListener("mozfullscreenchange", GLUT.onFullscreenEventChange, true);
+   document.removeEventListener("webkitfullscreenchange", GLUT.onFullscreenEventChange, true);
   }
   Browser.setCanvasSize(width, height);
   if (GLUT.reshapeFunc) {
@@ -2587,13 +2614,26 @@ var GLUT = {
   }
   _glutPostRedisplay();
  }),
- requestFullScreen: (function() {
-  var RFS = Module["canvas"]["requestFullscreen"] || Module["canvas"]["requestFullScreen"] || Module["canvas"]["mozRequestFullScreen"] || Module["canvas"]["webkitRequestFullScreen"] || (function() {});
-  RFS.apply(Module["canvas"], []);
+ requestFullscreen: (function() {
+  Browser.requestFullscreen(false, false);
  }),
- cancelFullScreen: (function() {
+ requestFullScreen: (function() {
+  Module.printErr("GLUT.requestFullScreen() is deprecated. Please call GLUT.requestFullscreen instead.");
+  GLUT.requestFullScreen = (function() {
+   return GLUT.requestFullscreen();
+  });
+  return GLUT.requestFullscreen();
+ }),
+ exitFullscreen: (function() {
   var CFS = document["exitFullscreen"] || document["cancelFullScreen"] || document["mozCancelFullScreen"] || document["webkitCancelFullScreen"] || (function() {});
   CFS.apply(document, []);
+ }),
+ cancelFullScreen: (function() {
+  Module.printErr("GLUT.cancelFullScreen() is deprecated. Please call GLUT.exitFullscreen instead.");
+  GLUT.cancelFullScreen = (function() {
+   return GLUT.exitFullscreen();
+  });
+  return GLUT.exitFullscreen();
  })
 };
 function _glutSwapBuffers() {}
@@ -2725,8 +2765,16 @@ function _glGetString(name_) {
  switch (name_) {
  case 7936:
  case 7937:
- case 7938:
+ case 37445:
+ case 37446:
   ret = allocate(intArrayFromString(GLctx.getParameter(name_)), "i8", ALLOC_NORMAL);
+  break;
+ case 7938:
+  var glVersion = GLctx.getParameter(GLctx.VERSION);
+  {
+   glVersion = "OpenGL ES 2.0 (" + glVersion + ")";
+  }
+  ret = allocate(intArrayFromString(glVersion), "i8", ALLOC_NORMAL);
   break;
  case 7939:
   var exts = GLctx.getSupportedExtensions();
@@ -2739,7 +2787,12 @@ function _glGetString(name_) {
   break;
  case 35724:
   var glslVersion = GLctx.getParameter(GLctx.SHADING_LANGUAGE_VERSION);
-  if (glslVersion.indexOf("WebGL GLSL ES 1.0") != -1) glslVersion = "OpenGL ES GLSL ES 1.00 (WebGL)";
+  var ver_re = /^WebGL GLSL ES ([0-9]\.[0-9][0-9]?)(?:$| .*)/;
+  var ver_num = glslVersion.match(ver_re);
+  if (ver_num !== null) {
+   if (ver_num[1].length == 3) ver_num[1] = ver_num[1] + "0";
+   glslVersion = "OpenGL ES GLSL ES " + ver_num[1] + " (" + glslVersion + ")";
+  }
   ret = allocate(intArrayFromString(glslVersion), "i8", ALLOC_NORMAL);
   break;
  default:
@@ -5929,7 +5982,7 @@ function _abort() {
  Module["abort"]();
 }
 function _glutReshapeWindow(width, height) {
- GLUT.cancelFullScreen();
+ GLUT.exitFullscreen();
  Browser.setCanvasSize(width, height);
  if (GLUT.reshapeFunc) {
   Runtime.dynCall("vii", GLUT.reshapeFunc, [ width, height ]);
@@ -5998,7 +6051,12 @@ function _glutKeyboardFunc(func) {
 var GLctx;
 GL.init();
 Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) {
+ Module.printErr("Module.requestFullScreen is deprecated. Please call Module.requestFullscreen instead.");
+ Module["requestFullScreen"] = Module["requestFullscreen"];
  Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice);
+};
+Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas, vrDevice) {
+ Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
 };
 Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) {
  Browser.requestAnimationFrame(func);
